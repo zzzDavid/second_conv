@@ -26,6 +26,22 @@ int main(){
   int mem_conv3[MAX_FMAP];
   ofstream myfile;
   pad(input, mem_conv2, 16, I_WIDTH2);
+
+  // check first window
+  // int first = 0;
+  // for (int ic = 0; ic < 16; ic++) {
+  //   for (int h = 0; h < 3; h++) {
+  //     for (int w = 0; w < 3; w++) {
+  //       bool inp = mem_conv2[ic * (I_WIDTH2 + PADDING) * (I_WIDTH2 + PADDING) + h * (I_WIDTH2 + PADDING) + w];
+  //       bool wgt = w_conv2[ic * 3 * 3 + h * 3 + w];
+  //       cout << "input[0][" << ic << "][" << h << "][" << w << "] = " << inp << ", ";
+  //       cout << "kernel[0][" << ic << "][" << h << "][" << w << "] = " << wgt << "\n";
+  //       first += (inp ? 1 : -1) * (wgt ? 1 : -1);
+  //     }
+  //   }
+  // }
+  // cout << "first = " << first << "\n";
+
   conv2(mem_conv2, mem_conv3, 16, 32, I_WIDTH2+PADDING);
   myfile.open ("output.txt", std::ios::app);
   for (int j = 0; j< 32*8*8; j++){
@@ -55,11 +71,11 @@ void pad(const bit input[MAX_FMAP], bit output[MAX_FMAP], int M, int I) {
 
   for (int i = 0; i < MAX_FMAP; i++) output[i] = 0;
 
-  for (int m = 0; m < M; m++) {
+  for (int m = 0; m < M; m++) { // m is input channel
     for (int x = 0; x < I; x++) {
       for (int y = 0; y < I; y++) {
         int i_index = x + y*I + m*ifmap_size;
-        int o_index = (x + PADDING/2) + (y + PADDING/2)*(I + PADDING) + m*ofmap_size;
+        int o_index = (x + PADDING/2) + (y + PADDING/2)*(I + PADDING) + m*ofmap_size; // CHW
         output[o_index] = input[i_index];
       }
     }
@@ -94,26 +110,24 @@ void conv2(bit input[MAX_FMAP], int output[MAX_FMAP], int M, int N, int I)
   int ofmap_size = O * O;
   
   // MAC and batchnorm
-  LOOP_N: for (int n = 0; n < N; n++){
-    LOOP_X: for (int x = 0; x < O; x++){
-      LOOP_Y: for (int y = 0; y < O; y++){
+  LOOP_N: for (int n = 0; n < N; n++){ // n is output channel
+    LOOP_X: for (int x = 0; x < O; x++){ // x is output col
+      LOOP_Y: for (int y = 0; y < O; y++){ // y is output row
         int sum = 0;
-        int o_index = x + y * O + n * ofmap_size;
-        LOOP_M: for (int m = 0; m < M; m++){
+        int o_index = x + y * O + n * ofmap_size; // output is NCHW
+        LOOP_M: for (int m = 0; m < M; m++){ // m is input channel
           int one_out = 0;
-          int mac_num = 0;
-          LOOP_C: for (int c = 0; c < F; c++){
-            LOOP_R: for (int r = 0; r < F; r++){
-              if (if_mac(x + c, y + r, I)) { //neglect padding pixels in mac
-                int i_index = x + c + (y + r) * I + m * ifmap_size;
-                int w_index = c + r * F + (n + m * N) * FILTER_SIZE;
+          int mac_num = 9;
+          LOOP_C: for (int c = 0; c < F; c++){ // c is kernel col
+            LOOP_R: for (int r = 0; r < F; r++){ // r is kernel row
+                int i_index = m * ifmap_size + (y + r) * I + x + c;
+                int w_index = n * FILTER_SIZE * M + m * F * F + r * F + c;
                 one_out += input[i_index] == w_conv2[w_index];
-                mac_num++;
-              }
             }
           }
           sum += (one_out << 1) - mac_num;
         }
+        if (o_index == 0) cout << "sum = " << sum << "\n";
         output[o_index] = sum; 
       }
     }

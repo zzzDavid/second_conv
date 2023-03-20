@@ -84,6 +84,22 @@ void top(
       }
     }
   }
+
+  // print first window
+  int first = 0;
+  for (int ic = 0; ic < 16; ic++) {
+    for (int h = 0; h < 3; h++) {
+      for (int w = 0; w < 3; w++) {
+        bool inp = conv2_pad[0][ic][h][w];
+        bool wgt = v1[0][ic][h][w];
+        cout << "input[0][" << ic << "][" << h << "][" << w << "] = " << inp << ", ";
+        cout << "kernel[0][" << ic << "][" << h << "][" << w << "] = " << wgt << "\n";
+        first += (inp ? 1 : -1) * (wgt ? 1 : -1);
+      }
+    }
+  }
+  cout << "first = " << first << "\n";
+
   l_ff: for (int ff = 0; ff < 32; ff++) {       // L480
     l_yy: for (int yy = 0; yy < 8; yy++) {      // L480
       l_xx: for (int xx = 0; xx < 8; xx++) {    // L480

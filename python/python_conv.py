@@ -25,22 +25,35 @@ with open(kernel_file, "r") as f:
     kernel = np.array(kernel).astype(np.int32)
     kernel = kernel.reshape(o, c, kh, kw)
 
-# 0 in input and kernel means -1
-input[input == 0] = -1
-kernel[kernel == 0] = -1
-
 output = np.zeros((n, o, h, w)) 
 # padding
-input = np.pad(input, ((0, 0), (0, 0), (1, 1), (1, 1)), 'constant', constant_values=(-1, -1))
+input = np.pad(input, ((0, 0), (0, 0), (1, 1), (1, 1)), 'constant', constant_values=(0, 0))
+
+first = 0
+for cc in range(c):
+    for hh in range(3):
+        for ww in range(3):
+            inp = input[0, cc, hh, ww]
+            ker = kernel[0, cc, hh, ww]
+            print(f"input[0][{cc}][{hh}][{ww}] = {inp}, kernel[0][{cc}][{hh}][{ww}] = {ker}")
+            inp = 1 if inp == 1 else -1
+            ker = 1 if ker == 1 else -1
+            first += inp * ker
+print(f"first = {first}")
+
 # convolution
-for i in range(n):
-    for j in range(o):
-        for k in range(h):
-            for l in range(w):
-                for m in range(c):
-                    for p in range(kh):
-                        for q in range(kw):
-                            output[i][j][k][l] += input[i][m][k + p][l + q] * kernel[j][m][p][q]
+for nn in range(n):
+    for oo in range(o):
+        for hh in range(h):
+            for ww in range(w):
+                for cc in range(c):
+                    for kkh in range(kh):
+                        for kkw in range(kw):
+                            inp = input[nn, cc, hh + kkh, ww + kkw]
+                            ker = kernel[oo, cc, kkh, kkw]
+                            inp = 1 if inp == 1 else -1
+                            ker = 1 if ker == 1 else -1
+                            output[nn, oo, hh, ww] += inp * ker
 
 # save output to file
 output = output.reshape(-1)
